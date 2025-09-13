@@ -21,7 +21,7 @@ st.title("e-tongue")
 st.markdown("pH, TDS, and Turbidity readings from Arduino Uno are displayed and saved.")
 
 # --- Data Storage ---
-csv_file = "water_quality_log.csv"
+csv_file = "app.csv"
 
 if os.path.exists(csv_file):
     st.session_state.data = pd.read_csv(csv_file)
