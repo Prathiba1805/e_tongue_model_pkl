@@ -1,6 +1,8 @@
-import serial
 import streamlit as st
 import joblib
+import os
+os.system("pip install pyserial")
+import serial
 
 # Load trained model
 model = joblib.load("e_tongue_model.pkl")
