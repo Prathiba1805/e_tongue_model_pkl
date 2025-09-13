@@ -5,7 +5,7 @@ import pandas as pd
 import os
 
 # --- Arduino Serial Setup ---
-arduino_port = "COM3"   # Change this to your port (e.g., /dev/ttyUSB0 for Linux)
+arduino_port = "COM4"   # Change this to your port (e.g., /dev/ttyUSB0 for Linux)
 baud = 9600
 
 try:
@@ -16,8 +16,8 @@ except:
     ser = None
 
 # --- Streamlit Page Setup ---
-st.set_page_config(page_title="Water Quality Dashboard", layout="wide")
-st.title("💧 Real-Time Water Quality Monitoring with Logging")
+st.set_page_config(page_title="e-tongue Dashboard", layout="wide")
+st.title("e-tongue")
 st.markdown("pH, TDS, and Turbidity readings from Arduino Uno are displayed and saved.")
 
 # --- Data Storage ---
