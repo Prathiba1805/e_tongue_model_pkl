@@ -1,25 +1,62 @@
 import streamlit as st
-import joblib
+import serial
+import time
+import pandas as pd
 import os
 
-# Check if model file exists
-MODEL_PATH = "e_tongue_model.pkl"
+# --- Arduino Serial Setup ---
+arduino_port = "COM3"   # Change this to your port (e.g., /dev/ttyUSB0 for Linux)
+baud = 9600
 
-if not os.path.exists(MODEL_PATH):
-    st.error("❌ Model file not found! Please upload e_tongue_model.pkl to the repo.")
+try:
+    ser = serial.Serial(arduino_port, baud, timeout=1)
+    time.sleep(2)  # wait for Arduino to reset
+except:
+    st.error("⚠️ Could not connect to Arduino. Check the port.")
+    ser = None
+
+# --- Streamlit Page Setup ---
+st.set_page_config(page_title="Water Quality Dashboard", layout="wide")
+st.title("💧 Real-Time Water Quality Monitoring with Logging")
+st.markdown("pH, TDS, and Turbidity readings from Arduino Uno are displayed and saved.")
+
+# --- Data Storage ---
+csv_file = "water_quality_log.csv"
+
+if os.path.exists(csv_file):
+    st.session_state.data = pd.read_csv(csv_file)
 else:
-    # Load the model
-    model = joblib.load(MODEL_PATH)
-    st.success("✅ Model loaded successfully!")
+    st.session_state.data = pd.DataFrame(columns=["Time", "pH", "TDS", "Turbidity"])
 
-    # Example UI
-    st.title("AI E-Tongue Quality Assessment")
+# --- Live Update ---
+placeholder = st.empty()
 
-    ph = st.number_input("Enter pH value", min_value=0.0, max_value=14.0, step=0.1)
-    turbidity = st.number_input("Enter Turbidity (NTU)", min_value=0.0, step=0.1)
-    conductivity = st.number_input("Enter Conductivity (µS/cm)", min_value=0.0, step=0.1)
+while True:
+    if ser and ser.in_waiting > 0:
+        line = ser.readline().decode("utf-8").strip()
 
-    if st.button("Predict Quality"):
-        features = [[ph, turbidity, conductivity]]
-        prediction = model.predict(features)
-        st.write("🔮 Prediction:", prediction)
+        try:
+            # Example line: "pH: 7.12, TDS: 320.5 ppm, Turbidity: 12.3 NTU"
+            parts = line.replace("ppm", "").replace("NTU", "").split(",")
+            ph = float(parts[0].split(":")[1])
+            tds = float(parts[1].split(":")[1])
+            turbidity = float(parts[2].split(":")[1])
+
+            # --- Save new reading ---
+            new_data = {"Time": time.strftime("%H:%M:%S"), "pH": ph, "TDS": tds, "Turbidity": turbidity}
+            st.session_state.data = pd.concat([st.session_state.data, pd.DataFrame([new_data])], ignore_index=True)
+
+            # --- Save to CSV file ---
+            st.session_state.data.to_csv(csv_file, index=False)
+
+            # --- Display in Dashboard ---
+            with placeholder.container():
+                col1, col2, col3 = st.columns(3)
+                col1.metric("pH", f"{ph:.2f}")
+                col2.metric("TDS (ppm)", f"{tds:.1f}")
+                col3.metric("Turbidity (NTU)", f"{turbidity:.1f}")
+
+                st.line_chart(st.session_state.data.set_index("Time"))
+
+        except Exception as e:
+            st.warning(f"Parsing error: {line}")
