@@ -1,27 +1,25 @@
 import streamlit as st
 import joblib
 import os
-os.system("pip install pyserial")
-import serial
 
-# Load trained model
-model = joblib.load("e_tongue_model.pkl")
+# Check if model file exists
+MODEL_PATH = "e_tongue_model.pkl"
 
-# Connect to Arduino (your Uno is on COM6)
-ser = serial.Serial('COM6', 9600, timeout=1)
+if not os.path.exists(MODEL_PATH):
+    st.error("❌ Model file not found! Please upload e_tongue_model.pkl to the repo.")
+else:
+    # Load the model
+    model = joblib.load(MODEL_PATH)
+    st.success("✅ Model loaded successfully!")
 
-st.title("🌿 E-Tongue Dravya Identification Dashboard")
+    # Example UI
+    st.title("AI E-Tongue Quality Assessment")
 
-if st.button("📡 Get Live Sensor Data"):
-    line = ser.readline().decode().strip()
-    if line:
-        try:
-            # Expecting: pH,ORP,Cond,Metal
-            pH, orp, cond, metal = map(float, line.split(","))
-            st.write(f"📊 Sensor Data → pH: {pH}, ORP: {orp}, Cond: {cond}, Metal: {metal}")
+    ph = st.number_input("Enter pH value", min_value=0.0, max_value=14.0, step=0.1)
+    turbidity = st.number_input("Enter Turbidity (NTU)", min_value=0.0, step=0.1)
+    conductivity = st.number_input("Enter Conductivity (µS/cm)", min_value=0.0, step=0.1)
 
-            new_sample = [[pH, orp, cond, metal]]
-            prediction = model.predict(new_sample)
-            st.success(f"✅ Predicted Dravya: **{prediction[0]}**")
-        except:
-            st.error("⚠️ Invalid data format from Arduino")
+    if st.button("Predict Quality"):
+        features = [[ph, turbidity, conductivity]]
+        prediction = model.predict(features)
+        st.write("🔮 Prediction:", prediction)
